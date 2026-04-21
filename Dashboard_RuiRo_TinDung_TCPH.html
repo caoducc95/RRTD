@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Rủi Ro Tín Dụng – TCPH</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root { color-scheme: light; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f0f4f8;color:#1a2a3a;font-size:13px}
+.header{background:linear-gradient(135deg,#1F3864,#2E75B6);color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:18px;font-weight:700;letter-spacing:.3px}
+.header .meta{font-size:11px;opacity:.8;margin-top:4px}
+.badge-date{background:rgba(255,255,255,.18);border-radius:6px;padding:4px 12px;font-size:11px}
+.main{padding:18px 20px;max-width:1400px;margin:0 auto}
+.legend{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
+.dot{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+.dot-g{background:#00B050}.dot-y{background:#FFC000}.dot-r{background:#C00000}
+.section-title{font-size:13px;font-weight:700;color:#1F3864;margin:18px 0 8px;letter-spacing:.2px;border-left:4px solid #2E75B6;padding-left:8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px}
+.card{background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-top:5px solid #ccc;position:relative;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.card.low{border-top-color:#00B050}.card.medium{border-top-color:#FFC000}.card.high{border-top-color:#C00000}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.card-name{font-weight:700;font-size:13px;color:#1a2a3a}
+.card-ticker{font-size:11px;color:#6b7280;margin-top:2px}
+.risk-badge{font-size:10px;font-weight:700;border-radius:20px;padding:3px 10px;white-space:nowrap}
+.badge-low{background:#E2EFDA;color:#00692e}.badge-medium{background:#FFF2CC;color:#7f4f00}.badge-high{background:#FFDCDC;color:#7f0000}
+.score-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.score-label{font-size:11px;color:#6b7280}
+.score-bar-wrap{flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}
+.score-bar{height:100%;border-radius:4px;transition:width .6s ease}
+.score-val{font-size:12px;font-weight:700;min-width:28px;text-align:right}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.metric{background:#f8fafc;border-radius:5px;padding:5px 7px}
+.metric-label{font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.3px}
+.metric-val{font-size:12px;font-weight:700;color:#1a2a3a}
+.metric-val.m-g{color:#00692e}.metric-val.m-y{color:#92640a}.metric-val.m-r{color:#991b1b}
+.card-comment{font-size:10px;color:#6b7280;margin-top:8px;line-height:1.5;border-top:1px solid #f0f0f0;padding-top:6px}
+.detail-panel{background:#fff;border-radius:10px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.09);margin-bottom:20px;display:none}
+.detail-panel.open{display:block}
+.detail-title{font-size:15px;font-weight:700;color:#1F3864;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.close-btn{cursor:pointer;color:#6b7280;font-size:18px;line-height:1;padding:0 4px}
+.metrics-table{width:100%;border-collapse:collapse;font-size:12px}
+.metrics-table th{background:#1F3864;color:#fff;padding:7px 10px;text-align:center;font-weight:600}
+.metrics-table th:first-child{text-align:left}
+.metrics-table td{padding:6px 10px;border-bottom:1px solid #f0f4f8}
+.metrics-table tr:hover td{background:#f8fafc}
+.metrics-table td:first-child{font-weight:600;color:#374151}
+.cell-g{background:#E2EFDA;color:#00692e;text-align:center;font-weight:700;border-radius:4px;padding:2px 6px}
+.cell-y{background:#FFF2CC;color:#7f4f00;text-align:center;font-weight:700;border-radius:4px;padding:2px 6px}
+.cell-r{background:#FFDCDC;color:#7f0000;text-align:center;font-weight:700;border-radius:4px;padding:2px 6px}
+.cell-na{color:#9ca3af;text-align:center}
+.thresh-row{font-size:11px}
+.thresh-g{color:#00692e;font-weight:600}.thresh-y{color:#92640a;font-weight:600}.thresh-r{color:#991b1b;font-weight:600}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-box{background:#fff;border-radius:10px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.chart-box canvas{max-height:260px}
+.alerts{background:#fff;border-radius:10px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:20px}
+.alert-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6}
+.alert-item:last-child{border-bottom:none}
+.alert-icon{font-size:16px;flex-shrink:0}
+.alert-body .alert-title{font-weight:700;font-size:12px}
+.alert-body .alert-desc{font-size:11px;color:#6b7280;margin-top:2px}
+.method-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.method-box{background:#fff;border-radius:10px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.method-box h4{font-size:12px;font-weight:700;color:#2E75B6;margin-bottom:8px}
+.method-box ul{list-style:none;padding:0}
+.method-box li{font-size:11px;padding:3px 0;color:#374151;display:flex;gap:6px}
+.method-box li::before{content:"▸";color:#2E75B6;flex-shrink:0}
+.footer{text-align:center;font-size:10px;color:#9ca3af;padding:16px;border-top:1px solid #e5e7eb;background:#fff;margin-top:8px}
+@media(max-width:700px){.charts-row,.method-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>🏦 Dashboard Đánh Giá Rủi Ro Tín Dụng – Tổ Chức Phát Hành Trái Phiếu</h1>
+    <div class="meta">Cập nhật: Tháng 04/2026 &nbsp;|&nbsp; Nguồn: BCTC kiểm toán 2024, NHNN, HOSE/HNX, Bloomberg</div>
+  </div>
+  <div class="badge-date">📅 Quý I / 2026</div>
+</div>
+
+<div class="main">
+  <div class="legend">
+    <div class="leg-item"><div class="dot dot-g"></div> THẤP (Điểm ≥ 70) – Chỉ số lành mạnh</div>
+    <div class="leg-item"><div class="dot dot-y"></div> TRUNG BÌNH (50–69) – Cần theo dõi</div>
+    <div class="leg-item"><div class="dot dot-r"></div> CAO (&lt; 50) – Hành động ngay</div>
+  </div>
+
+  <div class="section-title">Tổng Quan Danh Mục (nhấn vào thẻ để xem chi tiết)</div>
+  <div class="cards" id="cards-container"></div>
+
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-title">
+      <span id="detail-name"></span>
+      <span class="close-btn" onclick="closeDetail()">✕</span>
+    </div>
+    <div id="detail-body"></div>
+  </div>
+
+  <div class="section-title">Biểu Đồ So Sánh</div>
+  <div class="charts-row">
+    <div class="chart-box">
+      <div style="font-size:12px;font-weight:700;color:#1F3864;margin-bottom:8px">Điểm Rủi Ro Tổng Hợp (0–100)</div>
+      <canvas id="scoreChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <div style="font-size:12px;font-weight:700;color:#1F3864;margin-bottom:8px">Tỷ Lệ Nợ Xấu / Đòn Bẩy (%)</div>
+      <canvas id="nplChart"></canvas>
+    </div>
+  </div>
+
+  <div class="section-title">⚠️ Cảnh Báo & Theo Dõi</div>
+  <div class="alerts" id="alerts-container"></div>
+
+  <div class="section-title">📋 Phương Pháp Luận</div>
+  <div class="method-grid">
+    <div class="method-box">
+      <h4>Trọng Số – Nhóm Ngân Hàng</h4>
+      <ul>
+        <li>Chất lượng tài sản (NPL, LLR, Nhóm 2): 35%</li>
+        <li>Đủ vốn & an toàn (CAR, vốn điều lệ): 20%</li>
+        <li>Khả năng sinh lời (ROA, ROE, NIM): 30%</li>
+        <li>Thanh khoản (LDR, CASA): 15%</li>
+      </ul>
+    </div>
+    <div class="method-box">
+      <h4>Trọng Số – Nhóm Phi Ngân Hàng</h4>
+      <ul>
+        <li>Đòn bẩy tài chính (D/E, Nợ/Tổng TS): 40%</li>
+        <li>Khả năng thanh toán (Current, DSCR): 25%</li>
+        <li>Sinh lợi & hiệu quả (ROA, ROE, Margin): 30%</li>
+        <li>Tăng trưởng & định tính: 5%</li>
+      </ul>
+    </div>
+    <div class="method-box">
+      <h4>Ngưỡng Cảnh Báo – Ngân Hàng</h4>
+      <ul>
+        <li><span class="thresh-g">Xanh:</span> NPL &lt;1.5% | CAR &gt;10% | ROA &gt;1% | ROE &gt;15%</li>
+        <li><span class="thresh-y">Vàng:</span> NPL 1.5–3% | CAR 8–10% | ROA 0.5–1% | ROE 10–15%</li>
+        <li><span class="thresh-r">Đỏ:</span> NPL &gt;3% | CAR &lt;8% | ROA &lt;0.5% | ROE &lt;10%</li>
+      </ul>
+    </div>
+    <div class="method-box">
+      <h4>Ngưỡng Cảnh Báo – Phi Ngân Hàng</h4>
+      <ul>
+        <li><span class="thresh-g">Xanh:</span> D/E &lt;1x | Nợ/TS &lt;40% | ROE &gt;15% | Tăng DT &gt;10%</li>
+        <li><span class="thresh-y">Vàng:</span> D/E 1–2x | Nợ/TS 40–60% | ROE 10–15% | Tăng DT 0–10%</li>
+        <li><span class="thresh-r">Đỏ:</span> D/E &gt;2x | Nợ/TS &gt;60% | ROE &lt;10% | Tăng DT &lt;0%</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Dữ liệu từ BCTC kiểm toán 2024 & Q1/2025 &nbsp;|&nbsp; Chỉ phục vụ mục đích tham khảo nội bộ &nbsp;|&nbsp; Cập nhật định kỳ hàng quý
+</div>
+
+<script>
+const DATA = [
+  {
+    id:"bidv", name:"BIDV", fullName:"Ngân hàng TMCP Đầu tư & Phát triển VN",
+    ticker:"BID", sector:"Ngân hàng", exchange:"HOSE",
+    riskClass:"low", riskLabel:"THẤP", score:82,
+    comment:"Ngân hàng lớn nhất Việt Nam, vốn Nhà nước chi phối, CAR sát Basel II, NPL kiểm soát tốt. Tổng TS 2,7 triệu tỷ.",
+    metrics:[
+      {label:"NPL (%)",val:"1.41",cls:"m-g",thG:"<1.5%",thY:"1.5–3%",thR:">3%"},
+      {label:"CAR (%)",val:"8.6",cls:"m-y",thG:">10%",thY:"8–10%",thR:"<8%"},
+      {label:"ROA (%)",val:"1.02",cls:"m-g",thG:">1%",thY:"0.5–1%",thR:"<0.5%"},
+      {label:"ROE (%)",val:"19.09",cls:"m-g",thG:">15%",thY:"10–15%",thR:"<10%"},
+      {label:"LN trước thuế",val:"30,006 tỷ",cls:"m-g",thG:">10,000 tỷ",thY:"1k–10k tỷ",thR:"<1,000 tỷ"},
+      {label:"Tổng TS",val:"~2,700 nghìn tỷ",cls:"m-g",thG:">1,000k tỷ",thY:"200k–1,000k",thR:"<200k tỷ"},
+    ],
+    alerts:[],nplOrDE:1.41
+  },
+  {
+    id:"mbbank", name:"MB Bank", fullName:"Ngân hàng TMCP Quân đội",
+    ticker:"MBB", sector:"Ngân hàng", exchange:"HOSE",
+    riskClass:"medium", riskLabel:"TRUNG BÌNH", score:65,
+    comment:"ROE cao 22%+, nhưng NPL tăng lên 2.18%, tỷ lệ bao phủ nợ xấu 71.7% còn thấp. Cần theo dõi chất lượng TS.",
+    metrics:[
+      {label:"NPL (%)",val:"2.18",cls:"m-y",thG:"<1.5%",thY:"1.5–3%",thR:">3%"},
+      {label:"CAR (%)",val:"~10%",cls:"m-g",thG:">10%",thY:"8–10%",thR:"<8%"},
+      {label:"ROA (%)",val:"~1.80",cls:"m-g",thG:">1%",thY:"0.5–1%",thR:"<0.5%"},
+      {label:"ROE (%)",val:"22.18",cls:"m-g",thG:">15%",thY:"10–15%",thR:"<10%"},
+      {label:"LLR (%)",val:"71.7",cls:"m-y",thG:">100%",thY:"70–100%",thR:"<70%"},
+      {label:"CASA (%)",val:"~35%",cls:"m-g",thG:">30%",thY:"20–30%",thR:"<20%"},
+    ],
+    alerts:["NPL tăng từ 1.8% → 2.18% trong năm 2024, cần theo dõi"],nplOrDE:2.18
+  },
+  {
+    id:"tpbank", name:"TPBank", fullName:"Ngân hàng TMCP Tiên Phong",
+    ticker:"TPB", sector:"Ngân hàng", exchange:"HOSE",
+    riskClass:"medium", riskLabel:"TRUNG BÌNH", score:60,
+    comment:"LN tăng mạnh 36% lên 7,599 tỷ. ROA 1.57%. Tín dụng tăng 20% vượt kế hoạch. NPL cải thiện nhưng vẫn cần theo dõi danh mục bán lẻ.",
+    metrics:[
+      {label:"NPL (%)",val:"~2.20",cls:"m-y",thG:"<1.5%",thY:"1.5–3%",thR:">3%"},
+      {label:"CAR (%)",val:"~9.5",cls:"m-y",thG:">10%",thY:"8–10%",thR:"<8%"},
+      {label:"ROA (%)",val:"1.57",cls:"m-g",thG:">1%",thY:"0.5–1%",thR:"<0.5%"},
+      {label:"ROE (%)",val:"~17.0",cls:"m-g",thG:">15%",thY:"10–15%",thR:"<10%"},
+      {label:"LN trước thuế",val:"7,599 tỷ",cls:"m-g",thG:">10,000 tỷ",thY:"1k–10k tỷ",thR:"<1,000 tỷ"},
+      {label:"Tổng TS",val:"418,000 tỷ",cls:"m-g",thG:">1,000k tỷ",thY:"200k–1,000k",thR:"<200k tỷ"},
+    ],
+    alerts:["Nợ xấu mảng ô tô & tiêu dùng tăng – cần phân tích cơ cấu danh mục"],nplOrDE:2.20
+  },
+  {
+    id:"bvbank", name:"BaoVietBank", fullName:"Ngân hàng TMCP Bảo Việt",
+    ticker:"N/A", sector:"Ngân hàng", exchange:"OTC",
+    riskClass:"medium", riskLabel:"TRUNG BÌNH", score:52,
+    comment:"Ngân hàng quy mô nhỏ. LN trước thuế chỉ 86 tỷ – rất thấp. NPL 2.84% sát ngưỡng 3%. Chưa niêm yết, minh bạch thông tin hạn chế.",
+    metrics:[
+      {label:"NPL (%)",val:"2.84",cls:"m-y",thG:"<1.5%",thY:"1.5–3%",thR:">3%"},
+      {label:"CAR (%)",val:"~8.0",cls:"m-y",thG:">10%",thY:"8–10%",thR:"<8%"},
+      {label:"ROA (%)",val:"~0.10",cls:"m-r",thG:">1%",thY:"0.5–1%",thR:"<0.5%"},
+      {label:"ROE (%)",val:"~4.0",cls:"m-r",thG:">15%",thY:"10–15%",thR:"<10%"},
+      {label:"LN trước thuế",val:"86 tỷ",cls:"m-r",thG:">10,000 tỷ",thY:"1k–10k tỷ",thR:"<1,000 tỷ"},
+      {label:"Tổng TS",val:"90,600 tỷ",cls:"m-y",thG:">1,000k tỷ",thY:"200k–1,000k",thR:"<200k tỷ"},
+    ],
+    alerts:["NPL 2.84% – sát ngưỡng đỏ 3%","LN rất thấp (86 tỷ) – khả năng tự tăng vốn hạn chế","Chưa niêm yết – minh bạch thông tin hạn chế"],nplOrDE:2.84
+  },
+  {
+    id:"agribank", name:"Agribank", fullName:"Ngân hàng Nông nghiệp & PTNT VN",
+    ticker:"N/A", sector:"Ngân hàng", exchange:"Chưa niêm yết",
+    riskClass:"low", riskLabel:"THẤP", score:75,
+    comment:"Ngân hàng chính sách lớn nhất VN, vốn Nhà nước 100%. LN 27,000 tỷ, Tổng TS 2.2 triệu tỷ. NPL 1.56% kiểm soát tốt.",
+    metrics:[
+      {label:"NPL (%)",val:"1.56",cls:"m-y",thG:"<1.5%",thY:"1.5–3%",thR:">3%"},
+      {label:"CAR (%)",val:"~9.0",cls:"m-y",thG:">10%",thY:"8–10%",thR:"<8%"},
+      {label:"ROA (%)",val:"~1.20",cls:"m-g",thG:">1%",thY:"0.5–1%",thR:"<0.5%"},
+      {label:"ROE (%)",val:"~20.0",cls:"m-g",thG:">15%",thY:"10–15%",thR:"<10%"},
+      {label:"LN trước thuế",val:"27,000 tỷ",cls:"m-g",thG:">10,000 tỷ",thY:"1k–10k tỷ",thR:"<1,000 tỷ"},
+      {label:"Vốn CSH",val:"126,000 tỷ",cls:"m-g",thG:">20k tỷ",thY:"10–20k tỷ",thR:"<10k tỷ"},
+    ],
+    alerts:["Chưa niêm yết – minh bạch thông tin hạn chế hơn NH niêm yết"],nplOrDE:1.56
+  },
+  {
+    id:"becamex", name:"Becamex IDC", fullName:"Tập đoàn Đầu tư & Phát triển CN Becamex",
+    ticker:"BCM", sector:"BĐS Khu CN", exchange:"HOSE",
+    riskClass:"medium", riskLabel:"TRUNG BÌNH", score:55,
+    comment:"Doanh thu 2024 giảm 34% xuống 5,195 tỷ. Vay nợ tài chính 23,387 tỷ (chiếm 39% TS). Q1/2025 LN gấp 3 lần cùng kỳ – tín hiệu phục hồi.",
+    metrics:[
+      {label:"Nợ vay / TS (%)",val:"39.4",cls:"m-g",thG:"<40%",thY:"40–60%",thR:">60%"},
+      {label:"ROA (%)",val:"~3.90",cls:"m-y",thG:">5%",thY:"2–5%",thR:"<2%"},
+      {label:"ROE (%)",val:"~7.0",cls:"m-r",thG:">15%",thY:"10–15%",thR:"<10%"},
+      {label:"Tăng DT YoY",val:"-34%",cls:"m-r",thG:">10%",thY:"0–10%",thR:"<0%"},
+      {label:"Tổng nợ vay",val:"23,387 tỷ",cls:"m-r",thG:"<5k tỷ",thY:"5–15k tỷ",thR:">15k tỷ"},
+      {label:"Tổng TS",val:"59,300 tỷ",cls:"m-y",thG:">50k tỷ",thY:"10–50k tỷ",thR:"<10k tỷ"},
+    ],
+    alerts:["Doanh thu 2024 giảm 34% – rủi ro thanh toán trái phiếu","Vay nợ 23,387 tỷ – áp lực lãi vay lớn","Phụ thuộc vào tiến độ giải phóng mặt bằng KCN"],nplOrDE:1.72
+  },
+  {
+    id:"ttcagris", name:"TTC AgriS", fullName:"CTCP Thành Thành Công – Biên Hòa",
+    ticker:"SBT", sector:"Nông nghiệp / Mía đường", exchange:"HOSE",
+    riskClass:"medium", riskLabel:"TRUNG BÌNH", score:58,
+    comment:"Doanh thu 9T đạt 21,648 tỷ (+11%). Huy động 270 tr USD từ IFC, E.SUN. Biên LN mỏng, phụ thuộc giá đường & tỷ giá. Nợ vay cao.",
+    metrics:[
+      {label:"Tăng DT YoY",val:"+11%",cls:"m-g",thG:">10%",thY:"0–10%",thR:"<0%"},
+      {label:"LNST 9T 24-25",val:"773 tỷ",cls:"m-y",thG:">1,000 tỷ",thY:"200–1k tỷ",thR:"<200 tỷ"},
+      {label:"ROA (%)",val:"~2.20",cls:"m-y",thG:">5%",thY:"2–5%",thR:"<2%"},
+      {label:"ROE (%)",val:"~8.0",cls:"m-r",thG:">15%",thY:"10–15%",thR:"<10%"},
+      {label:"Tổng TS",val:"34,369 tỷ",cls:"m-y",thG:">50k tỷ",thY:"10–50k tỷ",thR:"<10k tỷ"},
+      {label:"Huy động ngoại tệ",val:"270 tr USD",cls:"m-g",thG:"Tốt",thY:"—",thR:"—"},
+    ],
+    alerts:["Biên lợi nhuận mỏng – rủi ro khi giá đường thế giới giảm","Nợ ngoại tệ lớn – rủi ro tỷ giá","Cần theo dõi lịch đáo hạn trái phiếu"],nplOrDE:2.5
+  },
+  {
+    id:"pc1", name:"PC1 Group", fullName:"CTCP Tập đoàn PC1",
+    ticker:"PC1", sector:"Xây lắp điện / Năng lượng", exchange:"HOSE",
+    riskClass:"medium", riskLabel:"TRUNG BÌNH", score:62,
+    comment:"LN 2024 tăng 229% lên 460 tỷ. DT tăng 30%. D/E 1.72x, nợ vay chiếm 83% nợ phải trả. ROE 10.47% - đạt ngưỡng trung bình.",
+    metrics:[
+      {label:"D/E (x)",val:"1.72",cls:"m-y",thG:"<1.0x",thY:"1–2x",thR:">2x"},
+      {label:"Nợ vay / TS (%)",val:"63.2",cls:"m-r",thG:"<40%",thY:"40–60%",thR:">60%"},
+      {label:"ROA (%)",val:"3.75",cls:"m-y",thG:">5%",thY:"2–5%",thR:"<2%"},
+      {label:"ROE (%)",val:"10.47",cls:"m-y",thG:">15%",thY:"10–15%",thR:"<10%"},
+      {label:"Tăng DT YoY",val:"+30%",cls:"m-g",thG:">10%",thY:"0–10%",thR:"<0%"},
+      {label:"Tổng nợ vay",val:"11,129 tỷ",cls:"m-y",thG:"<5k tỷ",thY:"5–15k tỷ",thR:">15k tỷ"},
+    ],
+    alerts:["Nợ vay chiếm 83% nợ phải trả – đòn bẩy cao","Nợ vay dài hạn 7,796 tỷ – cần theo dõi lịch đáo hạn","Phụ thuộc vào tiến độ dự án điện & xây lắp"],nplOrDE:1.72
+  },
+];
+
+function scoreColor(s){return s>=70?"#00B050":s>=50?"#FFC000":"#C00000"}
+function scoreBarColor(s){return s>=70?"#00B050":s>=50?"#FFC000":"#C00000"}
+
+const cardsEl = document.getElementById("cards-container");
+DATA.forEach(d=>{
+  const card = document.createElement("div");
+  card.className = `card ${d.riskClass}`;
+  card.onclick = ()=>openDetail(d.id);
+  const badgeCls = d.riskClass==="low"?"badge-low":d.riskClass==="medium"?"badge-medium":"badge-high";
+  const m = d.metrics.slice(0,4);
+  card.innerHTML = `
+    <div class="card-header">
+      <div><div class="card-name">${d.name}</div><div class="card-ticker">${d.ticker} · ${d.exchange} · ${d.sector}</div></div>
+      <span class="risk-badge ${badgeCls}">${d.riskLabel}</span>
+    </div>
+    <div class="score-row">
+      <span class="score-label">Điểm rủi ro</span>
+      <div class="score-bar-wrap"><div class="score-bar" style="width:${d.score}%;background:${scoreBarColor(d.score)}"></div></div>
+      <span class="score-val" style="color:${scoreColor(d.score)}">${d.score}</span>
+    </div>
+    <div class="metrics-grid">
+      ${m.map(x=>`<div class="metric"><div class="metric-label">${x.label}</div><div class="metric-val ${x.cls}">${x.val}</div></div>`).join("")}
+    </div>
+    <div class="card-comment">${d.comment}</div>`;
+  cardsEl.appendChild(card);
+});
+
+function openDetail(id){
+  const d = DATA.find(x=>x.id===id);
+  document.getElementById("detail-name").textContent = `📊 ${d.fullName} (${d.ticker})`;
+  const badgeCls = d.riskClass==="low"?"badge-low":d.riskClass==="medium"?"badge-medium":"badge-high";
+  let html = `<div style="margin-bottom:12px"><span class="risk-badge ${badgeCls}" style="font-size:12px">${d.riskLabel} – Điểm ${d.score}/100</span> &nbsp; <span style="font-size:11px;color:#6b7280">${d.sector} · ${d.exchange}</span></div>`;
+  html += `<table class="metrics-table"><thead><tr><th>Chỉ Tiêu</th><th>Giá Trị</th><th style="background:#00692e">Ngưỡng Thấp 🟢</th><th style="background:#7f4f00">Ngưỡng TB 🟡</th><th style="background:#7f0000">Ngưỡng Cao 🔴</th></tr></thead><tbody>`;
+  d.metrics.forEach(m=>{
+    const cls = m.cls==="m-g"?"cell-g":m.cls==="m-y"?"cell-y":m.cls==="m-r"?"cell-r":"cell-na";
+    html+=`<tr><td>${m.label}</td><td><span class="${cls}">${m.val}</span></td><td class="thresh-row thresh-g">${m.thG||"—"}</td><td class="thresh-row thresh-y">${m.thY||"—"}</td><td class="thresh-row thresh-r">${m.thR||"—"}</td></tr>`;
+  });
+  html += "</tbody></table>";
+  if(d.alerts.length){
+    html += `<div style="margin-top:12px"><div style="font-weight:700;font-size:12px;color:#991b1b;margin-bottom:6px">⚠️ Điểm Cần Theo Dõi</div>`;
+    d.alerts.forEach(a=>{html+=`<div style="font-size:11px;background:#FFF5F5;border-left:3px solid #C00000;padding:5px 8px;margin-bottom:4px;border-radius:0 4px 4px 0">${a}</div>`;});
+    html += "</div>";
+  }
+  document.getElementById("detail-body").innerHTML = html;
+  const panel = document.getElementById("detail-panel");
+  panel.classList.add("open");
+  panel.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function closeDetail(){document.getElementById("detail-panel").classList.remove("open")}
+
+const alertsEl = document.getElementById("alerts-container");
+const alertData = DATA.filter(d=>d.alerts.length>0).flatMap(d=>d.alerts.map(a=>({org:d.name,cls:d.riskClass,msg:a})));
+alertsEl.innerHTML = alertData.length
+  ? alertData.map(a=>{const icon=a.cls==="high"?"🔴":a.cls==="medium"?"🟡":"🔵";return`<div class="alert-item"><span class="alert-icon">${icon}</span><div class="alert-body"><div class="alert-title">${a.org}</div><div class="alert-desc">${a.msg}</div></div></div>`;}).join("")
+  : '<div style="color:#6b7280;font-size:12px">Không có cảnh báo.</div>';
+
+new Chart(document.getElementById("scoreChart"),{
+  type:"bar",
+  data:{labels:DATA.map(d=>d.name),datasets:[{label:"Điểm Rủi Ro",data:DATA.map(d=>d.score),backgroundColor:DATA.map(d=>scoreBarColor(d.score)),borderRadius:5,borderSkipped:false}]},
+  options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`Điểm: ${c.parsed.y}/100`}}},scales:{y:{min:0,max:100,grid:{color:"#f0f4f8"},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
+});
+
+new Chart(document.getElementById("nplChart"),{
+  type:"bar",
+  data:{labels:DATA.map(d=>d.name),datasets:[{label:"NPL / D/E",data:DATA.map(d=>d.nplOrDE),backgroundColor:DATA.map(d=>d.nplOrDE<1.5?"rgba(0,176,80,.7)":d.nplOrDE<3?"rgba(255,192,0,.8)":"rgba(192,0,0,.7)"),borderRadius:5,borderSkipped:false}]},
+  options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const d=DATA[c.dataIndex];return d.sector==="Ngân hàng"?`NPL: ${c.parsed.y}%`:`D/E: ${c.parsed.y}x`;}}}},scales:{y:{min:0,grid:{color:"#f0f4f8"},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
+});
+</script>
+</body>
+</html>
